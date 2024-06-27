@@ -25,7 +25,7 @@ IELTS Speech Analyzer is a web application that helps users improve their IELTS 
 
 1. Clone the repository:
    ```
-   git clone https://github.com/yourusername/ielts-speech-analyzer.git
+   git clone https://github.com/Yc3t/IELTS-speech-analyzer
    cd ielts-speech-analyzer
    ```
 
