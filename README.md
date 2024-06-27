@@ -44,6 +44,7 @@ IELTS Speech Analyzer is a web application that helps users improve their IELTS 
    ```
    GROQ_API_KEY=your_groq_api_key_here
    ```
+5. create a `data` folder in the directory
 
 ## Usage
 

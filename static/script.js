@@ -136,10 +136,10 @@ document.addEventListener('DOMContentLoaded', (event) => {
     function handleFiles(files) {
         if (files.length > 0) {
             const file = files[0];
-            if (file.type === 'video/mp4') {
+            if (file.type === 'video/mp4' || file.type === 'audio/mpeg') {
                 uploadFile(file);
             } else {
-                alert('Please upload an MP4 file.');
+                alert('Please upload an MP4 video or MP3 audio file.');
             }
         }
     }

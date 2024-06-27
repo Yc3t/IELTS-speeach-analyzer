@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IELTS Speech Analyzer</title>
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='neural.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='neural.png') }}">
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 </head>
 <body>
@@ -24,8 +24,8 @@
         <div class="main-content">
             <h2>Start analyzing with IELTS Analyzer</h2>
             <div class="upload-area" id="dropArea">
-                <p>Drag and drop your MP4 file here</p>
-                <input type="file" id="fileInput" accept=".mp4" style="display: none;">
+                <p>Drag and drop your MP4 or MP3 file here</p>
+                <input type="file" id="fileInput" accept=".mp4,.mp3" style="display: none;">
                 <button id="uploadButton">Or click to upload</button>
             </div>
             <div id="loadingSpinner" class="loading-spinner" style="display: none;"></div>

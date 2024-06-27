@@ -38,7 +38,7 @@ def save_entries(entries):
 
 def convert_to_mp3(file):
     # Create a temporary file to save the uploaded content
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=file.filename)
     file.save(temp_file.name)
     temp_file.close()
 
@@ -47,13 +47,20 @@ def convert_to_mp3(file):
     mp3_path = os.path.join(app.config['UPLOAD_FOLDER'], mp3_filename)
 
     try:
-        # Convert to MP3
-        audio = AudioFileClip(temp_file.name)
-        audio.write_audiofile(mp3_path, verbose=False, logger=None)
-        audio.close()
+        # Convert to MP3 if it's not already an MP3
+        if not file.filename.lower().endswith('.mp3'):
+            audio = AudioFileClip(temp_file.name)
+            audio.write_audiofile(mp3_path, verbose=False, logger=None)
+            audio.close()
+        else:
+            # If it's already an MP3, just copy it
+            import shutil
+            shutil.copy(temp_file.name, mp3_path)
     finally:
         # Clean up the temporary file
         os.unlink(temp_file.name)
+
+    return mp3_path, mp3_filename
 
     return mp3_path, mp3_filename
 def transcribe_audio(mp3_path):
@@ -128,7 +135,7 @@ def upload_file():
     file = request.files['file']
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
-    if file and file.filename.lower().endswith('.mp4'):
+    if file and (file.filename.lower().endswith('.mp4') or file.filename.lower().endswith('.mp3')):
         try:
             mp3_path, mp3_filename = convert_to_mp3(file)
             transcription = transcribe_audio(mp3_path)
@@ -141,13 +148,13 @@ def upload_file():
             html_content = markdown.markdown(full_content)
             analysis_html_filename = f"{os.path.splitext(mp3_filename)[0]}_analysis.html"
             analysis_html_path = os.path.join(app.config['ANALYSIS_FOLDER'], analysis_html_filename)
-            with open(analysis_html_path, 'w') as f:
+            with open(analysis_html_path, 'w', encoding='utf-8') as f:
                 f.write(html_content)
             
             # Save full content to TXT file
             analysis_txt_filename = f"{os.path.splitext(mp3_filename)[0]}_analysis.txt"
             analysis_txt_path = os.path.join(app.config['ANALYSIS_FOLDER'], analysis_txt_filename)
-            with open(analysis_txt_path, 'w') as f:
+            with open(analysis_txt_path, 'w', encoding='utf-8') as f:
                 f.write(full_content)
             
             # Create entry for recent analyses
@@ -168,7 +175,6 @@ def upload_file():
         except Exception as e:
             return jsonify({'error': str(e)}), 500
     return jsonify({'error': 'Invalid file type'}), 400
-
 @app.route('/analysis/<filename>')
 def get_analysis(filename):
     return send_from_directory(app.config['ANALYSIS_FOLDER'], filename)
