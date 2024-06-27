@@ -68,4 +68,5 @@ IELTS Speech Analyzer is a web application that helps users improve their IELTS 
 - `data/`: Stores uploaded audio files and analysis results
 - `requirements.txt`: List of Python dependencies
 
-
+## Extra
+- `S2T.py`: aislated speech to text functionality
