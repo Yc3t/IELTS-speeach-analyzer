@@ -5,9 +5,12 @@ from flask import Flask, render_template, request, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
 from moviepy.editor import AudioFileClip
 from groq import Groq
+from anthropic import Anthropic
+from anthropic.types import TextBlock
 from dotenv import load_dotenv
 import markdown
 from datetime import datetime
+import re
 # Load environment variables from .env file
 load_dotenv()
 
@@ -24,7 +27,14 @@ os.makedirs(app.config['ANALYSIS_FOLDER'], exist_ok=True)
 groq_api_key = os.getenv('GROQ_API_KEY')
 if not groq_api_key:
     raise ValueError("GROQ_API_KEY not found in .env file")
-client = Groq(api_key=groq_api_key)
+groq_client = Groq(api_key=groq_api_key)
+
+# Initialize Anthropic client with API key from .env
+anthropic_api_key = os.getenv('ANTHROPIC_API_KEY')
+if not anthropic_api_key:
+    raise ValueError("ANTHROPIC_API_KEY not found in .env file")
+anthropic_client = Anthropic(api_key=anthropic_api_key)
+
 
 def get_entries():
     if os.path.exists(app.config['ENTRIES_FILE']):
@@ -62,10 +72,9 @@ def convert_to_mp3(file):
 
     return mp3_path, mp3_filename
 
-    return mp3_path, mp3_filename
 def transcribe_audio(mp3_path):
     with open(mp3_path, "rb") as file:
-        transcription = client.audio.transcriptions.create(
+        transcription = groq_client.audio.transcriptions.create(
             file=(mp3_path, file.read()),
             model="whisper-large-v3",
             prompt="",
@@ -74,9 +83,15 @@ def transcribe_audio(mp3_path):
         )
     return transcription.text
 
+def extract_text_from_textblock(content):
+    # Use regex to extract the text content from the TextBlock structure
+    match = re.search(r"TextBlock\(text='(.*?)', type='text'\)\]", content, re.DOTALL)
+    if match:
+        return match.group(1).replace('\\n', '\n').replace("\\'", "'")
+    return content  # Return original content if no match found
+
 def analyze_speech(transcription):
-    prompt = f"""
-    You are an expert IELTS examiner. Analyze the following transcribed speech based on the IELTS Speaking Band Descriptors. Provide detailed feedback and suggestions for improvement in each category. Use the transcription to support your analysis with specific examples.
+    prompt = f"""You are an expert IELTS examiner. Analyze the following transcribed speech based on the IELTS Speaking Band Descriptors. Provide detailed feedback and suggestions for improvement in each category. Use the transcription to support your analysis with specific examples.
 
     Transcription:
     {transcription}
@@ -97,34 +112,54 @@ def analyze_speech(transcription):
 
     ## Detailed Suggestions for Improvement
     1. Fluency and Coherence:
-       - [List 3-5 specific strategies or exercises to improve fluency and coherence]
+    - [List 3-5 specific strategies or exercises to improve fluency and coherence]
     2. Lexical Resource:
-       - [List 5-7 specific words or phrases the speaker could incorporate to enhance their vocabulary]
-       - [Suggest 2-3 topics the speaker could study to broaden their lexical range]
+    - [List 5-7 specific words or phrases the speaker could incorporate to enhance their vocabulary]
+    - [Suggest 2-3 topics the speaker could study to broaden their lexical range]
     3. Grammatical Range and Accuracy:
-       - [List 3-5 specific grammar points the speaker should focus on, with examples of correct usage]
-       - [Suggest 2-3 complex grammatical structures the speaker could incorporate, with examples]
+    - [List 3-5 specific grammar points the speaker should focus on, with examples of correct usage]
+    - [Suggest 2-3 complex grammatical structures the speaker could incorporate, with examples]
 
-    Remember to be constructive in your feedback, highlighting the areas for improvement.
+    Remember to be constructive in your feedback, highlighting the areas for improvement. Use Markdown formatting to structure your response.
     """
-
-    completion = client.chat.completions.create(
-        model="llama3-70b-8192",
+    
+    message = anthropic_client.messages.create(
+        model="claude-3-5-sonnet-20240620",
+        max_tokens=4096,
         messages=[
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ],
-        temperature=0.5,
-        max_tokens=5160,
-        top_p=1,
-        stream=False,
-        stop=None,
+            {"role": "user", "content": prompt}
+        ]
     )
     
+    # Extract the content from the message object
+    if message.content:
+        # Filter for TextBlock instances and join their text content
+        text_blocks = [block.text for block in message.content if isinstance(block, TextBlock)]
+        return ' '.join(text_blocks)
+    else:
+        return "No content received from the API"
+
+
+
+    '''
+    completion = groq_client.chat.completions.create(
+            model="llama3-70b-8192",
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.5,
+            max_tokens=5160,
+            top_p=1,
+            stream=False,
+            stop=None,
+        )
+        '''
     return completion.choices[0].message.content
 
+  
 @app.route('/')
 def index():
     return render_template('index.html')
